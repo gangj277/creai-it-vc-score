@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PitchStatus {
+  PENDING
+  QUESTIONS_READY
+  EVALUATING
+  COMPLETED
+  FAILED
+}
+
+enum Verdict {
+  UNICORN
+  SEED
+  HOLD
+  COME_BACK
+}
+
+model PitchSession {
+  id            String      @id @default(cuid())
+  status        PitchStatus @default(PENDING)
+  ideaText      String
+  publicId      String      @unique @default(cuid())
+
+  // Follow-up questions & answers (JSON arrays)
+  questions     Json?
+  answers       Json?
+
+  // Evaluation results (flat - no separate result table)
+  score              Int?
+  verdict            Verdict?
+  vcComment          String?
+  percentile         Float?
+  evaluationDetails  Json?
+
+  // Model info
+  model         String?
+
+  // UTM tracking
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  utmTerm       String?
+  utmContent    String?
+  referrer      String?
+  userAgent     String?
+
+  events        EventLog[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status])
+  @@index([verdict])
+  @@index([score])
+  @@index([createdAt])
+  @@index([publicId])
+}
+
+model EventLog {
+  id          String        @id @default(cuid())
+  sessionId   String?
+  session     PitchSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  eventName   String
+  properties  Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([eventName])
+  @@index([createdAt])
+  @@index([sessionId])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
